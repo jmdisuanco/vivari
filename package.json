@@ -33,6 +33,7 @@
     "smoke": "node scripts/smoke-sdk.mjs",
     "probe:node-registry": "node scripts/probe-node-registry.mjs",
     "probe:egress-headers": "node scripts/probe-egress-headers.mjs",
+    "probe:registry-mirror": "node scripts/probe-registry-mirror.mjs",
     "probe:cookie-jar": "node scripts/probe-cookie-jar.mjs",
     "probe:terminal-feedback": "node scripts/probe-terminal-feedback.mjs",
     "probe:http-egress": "node scripts/probe-http-egress.mjs",
@@ -66,8 +67,8 @@
     "og:check": "node scripts/og-cards.mjs --check"
   },
   "devDependencies": {
-    "@changesets/changelog-github": "^1.0.1",
-    "@changesets/cli": "^3.0.3",
-    "@resvg/resvg-js": "^2.6.2"
+    "@changesets/changelog-github": "1.0.1",
+    "@changesets/cli": "3.0.3",
+    "@resvg/resvg-js": "2.6.2"
   }
 }
