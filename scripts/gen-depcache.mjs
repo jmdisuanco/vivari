@@ -52,7 +52,7 @@ import { fileURLToPath } from "node:url";
 import { createDepCache, hashDepKey, readSnapshotContainer, writeSnapshotContainer } from "../packages/kernel-host/dep-cache.js";
 import { hostAccess, memoryStorage } from "./lib/host-vfs-access.mjs";
 import { loadShippedTemplates } from "./lib/shipped-templates.mjs";
-import { scratchPath, scratchTemp } from "./lib/scratch.mjs";
+import { npmEnv, scratchPath, scratchTemp } from "./lib/scratch.mjs";
 import { TARGET_FLAGS, targetPlatformEnv } from "./lib/npm-target-platform.mjs";
 import {
   REGISTRY,
@@ -254,7 +254,7 @@ async function buildOne(template) {
     fs.writeFileSync(path.join(dir, "package-lock.json"), lockText);
     // TARGET_FLAGS alone do not reach a non-optional dependency's platform check;
     // the preload does (see lib/npm-target-platform.mjs).
-    const target = targetPlatformEnv();
+    const target = targetPlatformEnv(npmEnv());
     try {
       execFileSync(
         "npm",

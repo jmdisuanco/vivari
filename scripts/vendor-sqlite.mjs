@@ -33,7 +33,7 @@ import {
   statSync, writeFileSync,
 } from "node:fs";
 import { createHash } from "node:crypto";
-import { scratchTemp } from "./lib/scratch.mjs";
+import { npmEnv, scratchTemp } from "./lib/scratch.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -182,6 +182,7 @@ function refresh() {
     execFileSync("npm", ["pack", `@sqlite.org/sqlite-wasm@${SQLITE_WASM_VERSION}`], {
       cwd: dir,
       stdio: "inherit",
+      env: npmEnv(),
     });
     const tgz = readdirSync(dir).find((f) => f.endsWith(".tgz"));
     if (!tgz) throw new Error("npm pack produced no tarball");

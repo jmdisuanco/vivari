@@ -14,7 +14,7 @@
 
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync, rmSync, readdirSync } from "node:fs";
-import { scratchTemp } from "./lib/scratch.mjs";
+import { npmEnv, scratchTemp } from "./lib/scratch.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -42,7 +42,7 @@ function readFromArg() {
 function downloadUndici() {
   const dir = scratchTemp("vendor-llhttp-");
   try {
-    execFileSync("npm", ["pack", `undici@${UNDICI_VERSION}`], { cwd: dir, stdio: "inherit" });
+    execFileSync("npm", ["pack", `undici@${UNDICI_VERSION}`], { cwd: dir, stdio: "inherit", env: npmEnv() });
     const tgz = readdirSync(dir).find((f) => f.endsWith(".tgz"));
     execFileSync("tar", ["-xzf", tgz], { cwd: dir });
     return {

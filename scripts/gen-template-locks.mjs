@@ -60,7 +60,7 @@ import { promisify } from "node:util";
 const execFileP = promisify(execFile);
 
 import { loadShippedTemplates } from "./lib/shipped-templates.mjs";
-import { scratchPath, scratchTemp } from "./lib/scratch.mjs";
+import { npmEnv, scratchPath, scratchTemp } from "./lib/scratch.mjs";
 import { ARBORIST_PEERSET_PRELOAD } from "../packages/kernel-host/node-gyp-stub.js";
 import { TARGET_CPU, TARGET_OS, TARGET_PLATFORM_PRELOAD } from "./lib/npm-target-platform.mjs";
 import { NATIVE_DROPIN_ALIASES, NATIVE_WASM_ALIASES } from "../packages/runtime/toolchain-shims.js";
@@ -780,7 +780,7 @@ async function resolveLock(id, packageJson) {
         "--cache",
         CACHE,
       ],
-      { cwd: dir, encoding: "utf8", env: { ...process.env, NODE_OPTIONS: nodeOptions } },
+      { cwd: dir, encoding: "utf8", env: npmEnv({ ...process.env, NODE_OPTIONS: nodeOptions }) },
     );
   try {
     fs.writeFileSync(preload, ARBORIST_PEERSET_PRELOAD + "\n" + TARGET_PLATFORM_PRELOAD);

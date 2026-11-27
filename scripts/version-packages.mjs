@@ -9,9 +9,10 @@
 // MAJOR), so the floor is moved here, to the version the two release under.
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
+import { npmEnv } from "./lib/scratch.mjs";
 
 const root = new URL("../", import.meta.url);
-const run = (cmd, args) => execFileSync(cmd, args, { cwd: root, stdio: "inherit" });
+const run = (cmd, args) => execFileSync(cmd, args, { cwd: root, stdio: "inherit", env: npmEnv() });
 
 run("npx", ["changeset", "version"]);
 
