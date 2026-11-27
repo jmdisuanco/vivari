@@ -91,8 +91,9 @@ jobs:
       # The SDK bundles three Wasm crates (VFS, codec, crypto) as assets.
       - name: Setup Rust
         if: steps.plan.outputs.publish == 'true'
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: 1.98.1
           targets: wasm32-unknown-unknown
       - name: Install wasm-pack
         if: steps.plan.outputs.publish == 'true'

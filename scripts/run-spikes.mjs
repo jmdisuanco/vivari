@@ -6,7 +6,7 @@
 //   --offline   only spikes that need NO live registry network (fast; the default
 //               gate). Still needs the Wasm VFS build for kernel-based ones.
 //   --net       only spikes that cannot run without the network (slow). Needs a
-//               vendored real npm at /tmp/vv-vendor, plus per-spike scratch dirs
+//               vendored real npm at .vv-scratch/vendor-npm, plus per-spike scratch dirs
 //               and studio delivery assets — all auto-provisioned here, see
 //               VENDORS below.
 //   --all       both tiers (default when no tier flag is given).
@@ -24,9 +24,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { matchesFilter } from "./lib/spike-filter.mjs";
+import { npmInstallInto, scratchPath } from "./lib/scratch.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const VENDOR_DIR = "/tmp/vv-vendor";
+const VENDOR_DIR = scratchPath("vendor-npm"); // the same tree scripts/vendor-npm.mjs packs
 const VENDOR_NPM = path.join(VENDOR_DIR, "node_modules/npm");
 
 // Host provisioning some spikes need before they can run at all. Two shapes:
@@ -61,12 +62,12 @@ const VENDOR_NPM = path.join(VENDOR_DIR, "node_modules/npm");
 // Keep the pins in sync with the spike that asserts on them and with the matching
 // scripts/vendor-*.mjs (each of those already carries the same note).
 const VENDORS = {
-  yarn: { install: ["yarn@1.22.22"], dir: "/tmp/vv-vendor-yarn", arg: "node_modules/yarn", probe: "bin/yarn.js" },
+  yarn: { install: ["yarn@1.22.22"], dir: scratchPath("vendor-yarn"), arg: "node_modules/yarn", probe: "bin/yarn.js" },
   // Probe pnpm 11's bundle, not bin/pnpm.cjs, so a dir left by the 9.x pin is re-provisioned.
-  pnpm: { install: ["pnpm@11.28.9"], dir: "/tmp/vv-vendor-pnpm", arg: "node_modules/pnpm", probe: "dist/pnpm.mjs" },
-  corepack: { install: ["corepack@0.35.0"], dir: "/tmp/vv-vendor-corepack", arg: "node_modules/corepack", probe: "dist/corepack.js" },
-  tsgo: { install: ["tsgo-wasm"], dir: "/tmp/vv-vendor-tsgo", arg: "node_modules/tsgo-wasm", probe: "tsgo.wasm" },
-  wsDemo: { install: ["express@^4.21.0", "ws@^8.18.0"], dir: "/tmp/vv-vendor-wsdemo", arg: ".", probe: "node_modules/ws/package.json" },
+  pnpm: { install: ["pnpm@11.28.9"], dir: scratchPath("vendor-pnpm"), arg: "node_modules/pnpm", probe: "dist/pnpm.mjs" },
+  corepack: { install: ["corepack@0.35.0"], dir: scratchPath("vendor-corepack"), arg: "node_modules/corepack", probe: "dist/corepack.js" },
+  tsgo: { install: ["tsgo-wasm@7.0.2"], dir: scratchPath("vendor-tsgo"), arg: "node_modules/tsgo-wasm", probe: "tsgo.wasm" },
+  wsDemo: { install: ["express@^4.21.0", "ws@^8.18.0"], dir: scratchPath("vendor-wsdemo"), arg: ".", probe: "node_modules/ws/package.json" },
   // The studio's view layer has no test dependency of its own and the repo has no
   // test runner, so the one spike that renders a React component brings its own:
   // React (pinned to the studio's own major), a DOM, and the bundler that turns
@@ -89,7 +90,7 @@ const VENDORS = {
       "@babel/core@^8.0.1",
       "babel-plugin-react-compiler@^1.0.0",
     ],
-    dir: "/tmp/vv-vendor-nbview",
+    dir: scratchPath("vendor-nbview"),
     arg: ".",
     probe: "node_modules/babel-plugin-react-compiler/package.json",
   },
@@ -666,10 +667,7 @@ if (selected.length === 0) {
 async function ensureVendoredNpm() {
   if (fs.existsSync(path.join(VENDOR_NPM, "bin/npm-cli.js"))) return true;
   console.log("\n== provisioning vendored npm at " + VENDOR_DIR + " ==");
-  fs.rmSync(VENDOR_DIR, { recursive: true, force: true });
-  fs.mkdirSync(VENDOR_DIR, { recursive: true });
-  const r = await spawnInherit("npm", ["install", "npm@10.9.2", "--no-save", "--no-audit", "--no-fund"], VENDOR_DIR);
-  return r === 0 && fs.existsSync(path.join(VENDOR_NPM, "bin/npm-cli.js"));
+  return installed(VENDOR_DIR, ["npm@10.9.2"]) && fs.existsSync(path.join(VENDOR_NPM, "bin/npm-cli.js"));
 }
 
 /** Absolute path a `vendor` spec produces, and which the spike is handed as argv[2]. */
@@ -689,10 +687,16 @@ async function ensureVendor(v) {
     return r === 0 && fs.existsSync(probe);
   }
   console.log(`\n== provisioning ${v.install.join(" ")} at ${v.dir} ==`);
-  fs.rmSync(v.dir, { recursive: true, force: true });
-  fs.mkdirSync(v.dir, { recursive: true });
-  const r = await spawnInherit("npm", ["install", ...v.install, "--no-save", "--no-audit", "--no-fund"], v.dir);
-  return r === 0 && fs.existsSync(probe);
+  return installed(v.dir, v.install) && fs.existsSync(probe);
+}
+
+function installed(dir, specs) {
+  try {
+    npmInstallInto(dir, specs, "inherit");
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function spawnInherit(cmd, argv, cwd) {

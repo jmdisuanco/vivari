@@ -6,6 +6,7 @@
 // from the kernel nudge the process event loop when a request is queued.
 
 import { bootProcess } from "../../../runtime/boot.js";
+import { setRegistryMirror } from "../../../runtime/registry-mirror.js";
 import * as codecNs from "../../../codec/pkg/vivari_codec.js";
 import * as cryptoNs from "../../../crypto/pkg/vivari_crypto.js";
 
@@ -135,6 +136,8 @@ self.onmessage = async (event) => {
   const { type, sab, spec, fsPort, threadPort, codecModule, cryptoModule, debugSab, debugLang } = event.data;
   if (type === "init") {
     selfPid = (spec && spec.pid) | 0;
+    // Before any guest code runs (the realm sweep hides `location` from it).
+    setRegistryMirror(event.data.registryMirror, self.location && self.location.href);
     const { makeZStream, cryptoCodec } = buildCodecs(codecModule, cryptoModule);
     bootProcess({
       sab,

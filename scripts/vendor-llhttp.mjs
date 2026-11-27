@@ -13,8 +13,8 @@
 // MIT (Node.js contributors). We ship only the compiled byte payload as base64.
 
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync, rmSync, readdirSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync, writeFileSync, rmSync, readdirSync } from "node:fs";
+import { scratchTemp } from "./lib/scratch.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -40,7 +40,7 @@ function readFromArg() {
 }
 
 function downloadUndici() {
-  const dir = mkdtempSync(path.join(tmpdir(), "vendor-llhttp-"));
+  const dir = scratchTemp("vendor-llhttp-");
   try {
     execFileSync("npm", ["pack", `undici@${UNDICI_VERSION}`], { cwd: dir, stdio: "inherit" });
     const tgz = readdirSync(dir).find((f) => f.endsWith(".tgz"));

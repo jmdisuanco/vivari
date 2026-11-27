@@ -51,8 +51,8 @@
     "typecheck:workers": "tsc -p tsconfig.workers.json"
   },
   "devDependencies": {
-    "typescript": "~6.0.2",
-    "vite": "^8.1.1"
+    "typescript": "6.0.3",
+    "vite": "8.3.8"
   },
   "publishConfig": {
     "access": "public"

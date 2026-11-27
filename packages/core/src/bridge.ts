@@ -692,8 +692,8 @@ export class KernelBridge {
   }
 
   /** Start the kernel (spawns fs/fetcher workers + VFS, then posts `ready`). */
-  boot(compress = true, netRelay?: string) {
-    this.worker.postMessage({ type: "init", compress, netRelay: netRelay || undefined });
+  boot(compress = true, netRelay?: string, registryMirror?: string | false) {
+    this.worker.postMessage({ type: "init", compress, netRelay: netRelay || undefined, registryMirror });
   }
 
   /**

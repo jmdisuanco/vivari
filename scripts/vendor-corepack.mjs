@@ -20,7 +20,7 @@
 //
 // Usage: node scripts/vendor-corepack.mjs [--force]
 
-import { execSync } from "node:child_process";
+import { npmInstallInto, scratchPath } from "./lib/scratch.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
@@ -29,7 +29,7 @@ import { readPackVersion } from "./lib/pack-version.mjs";
 
 const COREPACK_VERSION = "0.35.0"; // keep in sync with scripts/spike-corepack.mjs
 const ROOT = path.resolve(fileURLToPath(new URL("../", import.meta.url)));
-const VENDOR_DIR = process.env.VV_VENDOR_COREPACK_DIR || "/tmp/vv-vendor-corepack";
+const VENDOR_DIR = process.env.VV_VENDOR_COREPACK_DIR || scratchPath("vendor-corepack");
 const VENDOR_COREPACK = path.join(VENDOR_DIR, "node_modules", "corepack");
 const OUT_DIR = path.join(ROOT, "packages", "studio", "public", "vendor");
 // Gzip-compressed but deliberately NOT named `.gz` (static servers would set
@@ -57,13 +57,8 @@ if (fs.existsSync(OUT_FILE) && !force) {
 // 1) Vendor a pinned corepack into a scratch dir (host npm/network needed once).
 if (!fs.existsSync(path.join(VENDOR_COREPACK, "dist", "corepack.js")) || force) {
   log(`installing corepack@${COREPACK_VERSION} into ${VENDOR_DIR} …`);
-  fs.rmSync(VENDOR_DIR, { recursive: true, force: true });
-  fs.mkdirSync(VENDOR_DIR, { recursive: true });
   try {
-    execSync(`npm install corepack@${COREPACK_VERSION} --no-save --no-audit --no-fund --loglevel=error`, {
-      cwd: VENDOR_DIR,
-      stdio: ["ignore", "ignore", "inherit"],
-    });
+    npmInstallInto(VENDOR_DIR, [`corepack@${COREPACK_VERSION}`]);
   } catch (e) {
     log(`FAILED to vendor corepack (need network + host npm): ${(e && e.message) || e}`);
     process.exit(1);

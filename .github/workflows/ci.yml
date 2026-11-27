@@ -79,6 +79,7 @@ jobs:
       # regression here — a stripped Authorization header shows up as a request
       # that quietly succeeds anonymously.
       - run: npm run probe:egress-headers
+      - run: npm run probe:registry-mirror
       - run: npm run probe:terminal-feedback
       # The cookie jar's RFC 6265 subset. Pure logic on purpose: a path rule that
       # is slightly too generous hands one route's session to another, and neither
@@ -174,8 +175,9 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: 1.98.1
           targets: wasm32-unknown-unknown, wasm32-wasip1
       - uses: jetli/wasm-pack-action@v0.4.0
         with:
@@ -223,8 +225,9 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: 1.98.1
           targets: wasm32-unknown-unknown
       - uses: jetli/wasm-pack-action@v0.4.0
         with:
@@ -275,8 +278,9 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: 1.98.1
           targets: wasm32-unknown-unknown
       - uses: jetli/wasm-pack-action@v0.4.0
         with:
@@ -356,8 +360,9 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: 1.98.1
           targets: wasm32-unknown-unknown
       - uses: jetli/wasm-pack-action@v0.4.0
         with:

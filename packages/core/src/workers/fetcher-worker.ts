@@ -28,13 +28,12 @@ import {
 // The egress header policy (what survives CORS) lives beside the alias tables so
 // the browser worker and the headless probes share one definition.
 import { egressHeaders } from "../../../runtime/egress-header-policy.js";
+import { setRegistryMirror, toRegistryMirror } from "../../../runtime/registry-mirror.js";
 
-// Pluggable registry endpoint (the "direct now, proxy later" seam). The npm
-// registry sends `Access-Control-Allow-Origin: *` on both metadata and tarballs,
-// so a cross-origin-isolated page can fetch it directly — no server needed today.
-// To slot in a StackBlitz-style caching/rewriting proxy later, point REGISTRY_PROXY
-// at it and rewrite() below is the ONLY place that needs to change.
-const REGISTRY_PROXY = null;
+// Registry mirror (BootOptions.registryMirror, default same-origin `/_npm/`): every
+// public-registry URL is sent there instead; see runtime/registry-mirror.js. The
+// kernel posts the embedder's choice as the first message; until then, the default.
+setRegistryMirror(undefined, self.location && self.location.href);
 
 // Host alias. In-VM code can reach a service running on the HOST machine (the
 // machine running the browser, e.g. a real dev server on localhost:3000) by
@@ -61,9 +60,7 @@ function rewrite(url) {
   } catch {
     // Not an absolute URL — leave it untouched.
   }
-  if (!REGISTRY_PROXY) return url;
-  // e.g. return REGISTRY_PROXY + "/" + encodeURIComponent(url);
-  return url;
+  return toRegistryMirror(url);
 }
 
 // ---- transparent wasm drop-in aliasing --------------------------------------
@@ -206,6 +203,10 @@ async function doFetch(url, init) {
 }
 
 self.onmessage = async (event) => {
+  if (event.data && event.data.type === "config") {
+    setRegistryMirror(event.data.registryMirror, self.location && self.location.href);
+    return;
+  }
   const m = event.data;
   if (m.type !== "fetch") return;
   try {

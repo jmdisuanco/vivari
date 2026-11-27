@@ -1301,6 +1301,9 @@ let fsWorkerRef = null;
 let vfsCompression = true;
 // Optional network relay URL (BootOptions.netRelay), applied once the kernel exists.
 let netRelayUrl: string | null = null;
+// BootOptions.registryMirror as the embedder passed it (undefined = the default);
+// handed to the Fetcher Worker and every Process Worker, which resolve it.
+let registryMirrorOpt: string | false | undefined;
 
 // A bound port isn't the same as a *serving* one: Vite 8 (rolldown) binds :port
 // a few times during startup (bind → close → rebind), so the first `listen`
@@ -1505,6 +1508,7 @@ async function boot() {
     type: "module",
     name: "Fetcher Worker",
   });
+  fetcherWorker.postMessage({ type: "config", registryMirror: registryMirrorOpt });
   let fetchSeq = 1;
   const fetchPending = new Map();
   fetcherWorker.onmessage = (event) => {
@@ -1639,7 +1643,7 @@ async function boot() {
     // transferred from its creator through us) alongside its fs doorbell.
     // [optimize] Hand over the pre-compiled codec Modules (cloned, not
     // transferred — a Module stays usable here and in every process).
-    const init = { type: "init", sab: info.sab, spec: info.spec, fsPort: port1, codecModule, cryptoModule };
+    const init = { type: "init", sab: info.sab, spec: info.spec, fsPort: port1, codecModule, cryptoModule, registryMirror: registryMirrorOpt };
     // Breakpoint debugger: a debug target also receives its debug-command SAB. A
     // SharedArrayBuffer is shared by reference (never transferred), so it just rides
     // along in the init payload.
@@ -2605,6 +2609,7 @@ self.onmessage = async (event) => {
     // Default on: only an explicit `compress: false` (BootOptions.compress) disables it.
     vfsCompression = m.compress !== false;
     netRelayUrl = typeof m.netRelay === "string" && m.netRelay ? m.netRelay : null;
+    registryMirrorOpt = m.registryMirror === false || typeof m.registryMirror === "string" ? m.registryMirror : undefined;
     // `error` (not just `log`) so the SDK's boot() has something to reject on —
     // otherwise a kernel that dies here never posts `ready` and the caller waits
     // out its whole timeout with no idea why.

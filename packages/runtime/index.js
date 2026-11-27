@@ -12,6 +12,7 @@ import { createProcess } from "./builtins/process.js";
 import { createChildProcess } from "./builtins/child_process.js";
 import { createModuleSystem } from "./module.js";
 import { createWebSocket } from "./websocket.js";
+import { toRegistryMirror } from "./registry-mirror.js";
 import { rewriteDynamicImportToGlobal } from "./esm.js";
 import { isEsbuildInprocActive, esbuildWasmBytes } from "./esbuild-inproc-patch.js";
 import { createBunRuntime } from "./builtins/bun.js";
@@ -1465,6 +1466,9 @@ export function createRuntime({
   // hostname (this realm is a Worker on the studio origin, so location.hostname IS
   // the host) - reaching a service on the HOST machine when the studio is served
   // locally. Headless (no browser realm) has no location and no-ops.
+  // The same pass sends public-registry URLs to the registry mirror, exactly as the
+  // Fetcher Worker does for http/https (runtime/registry-mirror.js): a guest that
+  // downloads a package with fetch() (Next.js fetching its wasm SWC) stays on it.
   const HOST_ALIAS = "host.vivari.internal";
   const rewriteHostAlias = (input) => {
     // Read from the captured location, not the global one: this runs long after
@@ -1479,6 +1483,8 @@ export function createRuntime({
           u.hostname = host;
           return u.toString();
         }
+        const mirrored = toRegistryMirror(u.href);
+        if (mirrored !== u.href) return mirrored;
       } catch {
         /* not an absolute URL - leave untouched */
       }
