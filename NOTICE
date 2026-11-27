@@ -16,10 +16,20 @@ npm 10.9.2, MODIFIED, packed into packages/studio/public/vendor/npm-pack.bin (se
     returns the replacement node when a peer node was detached from its virtual peerSet during the loop
     (`node.parent` became null), instead of throwing "Cannot read properties of null (reading 'edgesOut')".
     The patch is generated at build time by patchArboristPeerSet() in packages/kernel-host/node-gyp-stub.js,
-    which documents the cause in full. No other file, feature or executable is changed or added.
+    which documents the cause in full.
+  - When the runtime loads the pack into the VM, stubNodeGyp() (packages/kernel-host/node-gyp-stub.js, called
+    from packages/kernel-host/load-real-npm.js) also overwrites three node-gyp entry points of the unpacked
+    npm with NODE_GYP_STUB, a short Node script from that file that prints "node-gyp (Vivari stub): skipping
+    native build" and exits 0 (and answers --version with v11.0.0), because native addons cannot be built in
+    the browser:
+      node_modules/@npmcli/run-script/lib/node-gyp-bin/node-gyp   (shell shim npm puts on PATH for scripts)
+      bin/node-gyp-bin/node-gyp                                  (npm's own copy of that shim)
+      node_modules/node-gyp/bin/node-gyp.js                      (the bundled node-gyp 11.0.0 CLI)
+    So a package's `node-gyp rebuild` install step succeeds without building anything. No other file,
+    feature or executable is changed or added.
   - The Modified Version is distributed under the Original License (Artistic-2.0), so anyone who receives it may
     make its Source form available to others under that licence (section 4(c)(i)). The Source form is
-    npm 10.9.2 plus the patch function named above, both in this repository's build.
+    npm 10.9.2 plus the patch function and the stub named above, all in this repository's build.
   - It runs only inside the in-browser VM, as the VM's `npm`. It does not replace or prevent installing or
     running the Standard Version on any host.
 
