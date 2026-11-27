@@ -45,6 +45,16 @@ export interface BootOptions {
    */
   netRelay?: string;
   /**
+   * Where package downloads go. Guest tools keep the public registry URLs
+   * (`https://registry.npmjs.org/`, `https://registry.yarnpkg.com/`), so lockfiles
+   * stay portable, but each request to them is sent to this mirror instead: a URL,
+   * or a path on the page's own origin. Default `"/_npm/"` (same origin), so a page
+   * with `connect-src 'self'` contacts no third-party host. The mirror must answer
+   * `<mirror><package path>` exactly as the registry does (packument, version
+   * manifest, tarball). `false` sends requests straight to the public registry.
+   */
+  registryMirror?: string | false;
+  /**
    * The preview Service Worker. It must be served **same-origin** at a scope that
    * covers the URLs you want proxied into the VM (default scope `/`). Pass a URL
    * string to override the default (`"/sw.js"`), or `false` to skip registration
