@@ -1,0 +1,7 @@
+{
+  "name": "vv-vendor-corepack",
+  "private": true,
+  "dependencies": {
+    "corepack": "0.35.0"
+  }
+}

@@ -72,7 +72,7 @@ if (fs.existsSync(OUT_FILE) && !force) {
 if (!fs.existsSync(path.join(VENDOR_TSGO, "tsgo.wasm")) || force) {
   log(`installing tsgo-wasm into ${VENDOR_DIR} …`);
   try {
-    npmInstallInto(VENDOR_DIR, [`tsgo-wasm@${TSGO_VERSION}`]);
+    npmInstallInto(VENDOR_DIR, "tsgo", [`tsgo-wasm@${TSGO_VERSION}`]);
   } catch (e) {
     log(`FAILED to vendor tsgo-wasm (need network + host npm): ${(e && e.message) || e}`);
     process.exit(1);

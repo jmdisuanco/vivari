@@ -1,0 +1,7 @@
+{
+  "name": "vv-vendor-pyodide",
+  "private": true,
+  "dependencies": {
+    "pyodide": "314.0.8"
+  }
+}

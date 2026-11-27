@@ -28,7 +28,7 @@
 // Build artifact (gitignored, /packages/studio/public/vendor). Idempotent unless
 // --force. Usage: node scripts/vendor-pyodide.mjs [--force]
 
-import { npmInstallInto, scratchPath } from "./lib/scratch.mjs";
+import { assertSha256, npmInstallInto, scratchPath } from "./lib/scratch.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -118,26 +118,29 @@ const DEFAULT_PACKAGES = [
 // codebase differently the day upstream changed a default, and the person it
 // happened to would have no way to know why. The bridge spike checks these
 // against the same versions run under the host's own CPython.
+// `sha256` is the wheel's digest, committed here and checked on every download (and on
+// a wheel already on disk): computed 2026-11-27 by downloading each wheel once, and
+// equal to the digest PyPI's JSON API reports for it. A mismatch aborts the build.
 const PYPI_PACKAGES = [
-  { name: "black", version: "26.5.1", imports: ["black", "blib2to3"], depends: ["click", "mypy-extensions", "packaging", "pathspec", "platformdirs", "pytokens"] },
+  { name: "black", version: "26.5.1", sha256: "4ed7f7da04046d2e488437170797d3b4a4ad83906683bcb7dfc68b673bbce5e2", imports: ["black", "blib2to3"], depends: ["click", "mypy-extensions", "packaging", "pathspec", "platformdirs", "pytokens"] },
   // black's three dependencies that Pyodide does not ship either. (click,
   // packaging and platformdirs ARE in the lock, so they are ordinary depends.)
-  { name: "mypy-extensions", version: "1.1.0", imports: ["mypy_extensions"], depends: [] },
-  { name: "pathspec", version: "1.1.1", imports: ["pathspec"], depends: [] },
-  { name: "pytokens", version: "0.4.1", imports: ["pytokens"], depends: [] },
+  { name: "mypy-extensions", version: "1.1.0", sha256: "1be4cccdb0f2482337c4743e60421de3a356cd97508abadd57d47403e94f5505", imports: ["mypy_extensions"], depends: [] },
+  { name: "pathspec", version: "1.1.1", sha256: "a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189", imports: ["pathspec"], depends: [] },
+  { name: "pytokens", version: "0.4.1", sha256: "26cef14744a8385f35d0e095dc8b3a7583f6c953c2e3d269c7f82484bf5ad2de", imports: ["pytokens"], depends: [] },
   // rich.markdown's dependency, which is not in Pyodide's index at ALL — so
   // without these two wheels that module is simply missing, whatever the lock
   // says. Pure Python, ~120 KB the pair.
-  { name: "markdown-it-py", version: "4.0.0", imports: ["markdown_it"], depends: ["mdurl"] },
-  { name: "mdurl", version: "0.1.2", imports: ["mdurl"], depends: [] },
+  { name: "markdown-it-py", version: "4.0.0", sha256: "87327c59b172c5011896038353a81343b6754500a08cd7a4973bb48c6d578147", imports: ["markdown_it"], depends: ["mdurl"] },
+  { name: "mdurl", version: "0.1.2", sha256: "84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8", imports: ["mdurl"], depends: [] },
   // Type stubs for the two vendored libraries that ship no types of their own
   // (checked, not assumed: everything else here has a py.typed). These are read
   // by mypy off the filesystem and never imported, so `imports` is empty — an
   // entry there would have loadPackagesFromImports pull a stub package into a
   // script's interpreter, where it is dead weight. Their own dependencies are
   // runtime dependencies of the libraries they describe, which are already here.
-  { name: "types-requests", version: "2.33.0.20260508", imports: [], depends: [] },
-  { name: "pandas-stubs", version: "3.0.5.260730", imports: [], depends: [] },
+  { name: "types-requests", version: "2.33.0.20260508", sha256: "fa01459cca184229713df03709db46a905325906d27e042cd4fd7ea3d15d3400", imports: [], depends: [] },
+  { name: "pandas-stubs", version: "3.0.5.260730", sha256: "60e90e3e1eda6937e337e243cbe6217e151c11137cd7eddf832af537c7310bfd", imports: [], depends: [] },
   // openpyxl is what `pandas.read_excel` and `DataFrame.to_excel` import, and
   // Pyodide's index does not carry it — so a spreadsheet, which is the format
   // data actually arrives in, was the one input pandas could not read. 0.26 MiB
@@ -147,8 +150,8 @@ const PYPI_PACKAGES = [
   // Vendoring the wheel is only half of it: nothing in a user's source ever names
   // openpyxl, so the import scan cannot load it. See HIDDEN_IMPORTS in
   // builtins/python.js for the other half.
-  { name: "openpyxl", version: "3.1.5", imports: ["openpyxl"], depends: ["et-xmlfile"] },
-  { name: "et-xmlfile", version: "2.0.0", imports: ["et_xmlfile"], depends: [] },
+  { name: "openpyxl", version: "3.1.5", sha256: "5282c12b107bffeef825f4617dc029afaf41d0ea60823bbb665ef3079dc79de2", imports: ["openpyxl"], depends: ["et-xmlfile"] },
+  { name: "et-xmlfile", version: "2.0.0", sha256: "7a91720bc756843502c3b7504c77b8fe44217c85c537d85037f0f536151b2caa", imports: ["et_xmlfile"], depends: [] },
 ];
 
 // Packages the lockfile under-declares: names they import at runtime that their
@@ -241,7 +244,7 @@ const PKG_DIR = path.join(SCRATCH, "node_modules", "pyodide");
 if (!fs.existsSync(path.join(PKG_DIR, "pyodide.mjs")) || force) {
   log(`installing pyodide into ${SCRATCH} …`);
   try {
-    npmInstallInto(SCRATCH, [`pyodide@${PYODIDE_VERSION}`]);
+    npmInstallInto(SCRATCH, "pyodide", [`pyodide@${PYODIDE_VERSION}`]);
   } catch (e) {
     log(`FAILED to install pyodide (need network + host npm): ${(e && e.message) || e}`);
     process.exit(1);
@@ -335,9 +338,12 @@ const CDN_BASE = `https://cdn.jsdelivr.net/pyodide/v${VERSION}/full/`;
 // template (numpy/pandas) and micropip. A network/TLS failure here (e.g. a
 // corporate MITM proxy → UNABLE_TO_GET_ISSUER_CERT_LOCALLY) must NOT abort
 // `npm run dev`; we warn, ship whatever downloaded, and let the user retry.
-async function download(fileName) {
+// Every wheel is checked against the sha256 in pyodide-lock.json, which came out of the
+// pyodide npm package that `npm ci` checked against scripts/vendor-locks/pyodide/. A
+// mismatch is not a flaky network: it aborts the build (fail closed), see mustMatch.
+async function download(fileName, sha256) {
   const dest = path.join(OUT_DIR, fileName);
-  if (fs.existsSync(dest) && !force) return true;
+  if (fs.existsSync(dest) && !force) return mustMatch(fs.readFileSync(dest), sha256, fileName);
   const url = CDN_BASE + fileName;
   const res = await fetch(url);
   if (!res.ok) {
@@ -345,6 +351,7 @@ async function download(fileName) {
     return false;
   }
   const buf = Buffer.from(await res.arrayBuffer());
+  mustMatch(buf, sha256, fileName);
   fs.writeFileSync(dest, buf);
   log(`  + ${fileName} (${(buf.length / 1048576).toFixed(1)} MB)`);
   return true;
@@ -352,6 +359,17 @@ async function download(fileName) {
 
 // Only packages whose wheel actually landed on disk go into the filtered lock,
 // so the runtime never asks Pyodide for a wheel we didn't ship.
+/** Exit (not skip) when `bytes` are not the committed/locked digest. */
+function mustMatch(bytes, sha256, label) {
+  try {
+    assertSha256(bytes, sha256, label);
+  } catch (e) {
+    log(`FAILED: ${e.message}. Delete the file and re-run if a stale copy is on disk.`);
+    process.exit(1);
+  }
+  return true;
+}
+
 const vendored = new Set();
 for (const key of closure) {
   const fileName = allPackages[key].file_name;
@@ -359,7 +377,7 @@ for (const key of closure) {
   let ok = false;
   try {
     // eslint-disable-next-line no-await-in-loop
-    ok = await download(fileName);
+    ok = await download(fileName, allPackages[key].sha256);
   } catch (e) {
     const cause = (e && e.cause && e.cause.code) || (e && e.message) || e;
     log(`  ! failed ${fileName}: ${cause}`);
@@ -393,13 +411,15 @@ async function vendorFromPyPI(spec) {
     return false;
   }
   const dest = path.join(OUT_DIR, wheel.filename);
-  if (!fs.existsSync(dest) || force) {
+  if (fs.existsSync(dest) && !force) mustMatch(fs.readFileSync(dest), spec.sha256, wheel.filename);
+  else {
     const res = await fetch(wheel.url);
     if (!res.ok) {
       log(`  ! failed ${wheel.filename} (HTTP ${res.status})`);
       return false;
     }
     const buf = Buffer.from(await res.arrayBuffer());
+    mustMatch(buf, spec.sha256, wheel.filename);
     fs.writeFileSync(dest, buf);
     log(`  + ${wheel.filename} (${(buf.length / 1048576).toFixed(2)} MB, from PyPI)`);
   }
@@ -409,7 +429,7 @@ async function vendorFromPyPI(spec) {
     file_name: wheel.filename, // relative -> resolved same-origin, never the CDN
     install_dir: "site",
     package_type: "package",
-    sha256: (wheel.digests && wheel.digests.sha256) || "",
+    sha256: spec.sha256,
     imports: spec.imports,
     depends: spec.depends,
     unvendored_tests: false,

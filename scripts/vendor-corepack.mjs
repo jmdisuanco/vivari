@@ -58,7 +58,7 @@ if (fs.existsSync(OUT_FILE) && !force) {
 if (!fs.existsSync(path.join(VENDOR_COREPACK, "dist", "corepack.js")) || force) {
   log(`installing corepack@${COREPACK_VERSION} into ${VENDOR_DIR} …`);
   try {
-    npmInstallInto(VENDOR_DIR, [`corepack@${COREPACK_VERSION}`]);
+    npmInstallInto(VENDOR_DIR, "corepack", [`corepack@${COREPACK_VERSION}`]);
   } catch (e) {
     log(`FAILED to vendor corepack (need network + host npm): ${(e && e.message) || e}`);
     process.exit(1);

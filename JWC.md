@@ -15,25 +15,44 @@ fork carries only small patches, each one offered upstream.
 ## Patches on `jwc1`
 
 1. **Build scripts stay inside the repo** (`scripts/lib/scratch.mjs`). Every vendor and generator script works under
-   `.vv-scratch/` (gitignored; `VV_SCRATCH_DIR` moves it) with its own npm cache there, instead of `/tmp` and
-   `os.tmpdir()`. `npmInstallInto()` writes a stub `package.json` and passes `--prefix .` before `npm install`:
-   without it, npm in an empty directory climbs to the nearest parent `package.json` and installs there (during the
-   spike it installed npm into the home directory's `node_modules`). Covers `vendor-{npm,yarn,pnpm,corepack,tsgo,
-   pyodide,ruff,llhttp,sqlite}.mjs`, `gen-depcache.mjs`, `gen-template-locks.mjs`, `lib/npm-target-platform.mjs` and
-   `run-spikes.mjs`. Probes and spikes that only use a temp dir and clean it up are unchanged.
-2. **Registry mirror, same-origin by default** (`packages/runtime/registry-mirror.js`, `BootOptions.registryMirror`).
+   `.vv-scratch/` (gitignored; `VV_SCRATCH_DIR` moves it), and every host `npm` it runs (`install`, `ci`, `pack`,
+   `run`) gets `npmEnv()`, which puts npm's cache and logs in `.vv-scratch/npm-cache` instead of `~/.npm`. Each scratch
+   install dir gets its own `package.json` and `--prefix .`: without it, npm in an empty directory climbs to the
+   nearest parent `package.json` and installs there (during the spike it installed npm into the home directory's
+   `node_modules`). Covers `vendor-{npm,yarn,pnpm,corepack,tsgo,pyodide,ruff,llhttp,sqlite}.mjs`, `gen-depcache.mjs`,
+   `gen-template-locks.mjs`, `version-packages.mjs`, `lib/npm-target-platform.mjs` and `run-spikes.mjs`. Probes and
+   spikes that only use a temp dir and clean it up are unchanged. `scripts/cloudflare-build*.sh` (upstream's
+   Cloudflare Pages builds) install Rust, wasm-pack and Bun into `$HOME` and run `npm ci` / `bun install` with
+   lifecycle scripts on, so they refuse to run unless `CI` or `CF_PAGES` is set (`scripts/lib/ci-only.sh`); build
+   locally with the steps under Build below.
+2. **Vendored downloads are locked and checked.** `npmInstallInto(dir, lock, specs)` installs only from a committed
+   lock, `scripts/vendor-locks/<lock>/{package.json,package-lock.json}`, with `npm ci --ignore-scripts`: npm checks
+   every tarball against the lock's `integrity` (sha512) and runs no install scripts. Specs must be exact versions
+   and must equal the committed `package.json`, or it throws. Locks: `npm`, `yarn`, `pnpm`, `corepack`, `tsgo`,
+   `pyodide`, `ruff` (vendor scripts) and `wsdemo`, `nbview` (run-spikes; their `^` ranges were pinned to what they
+   resolved to on 2026-11-27). Regenerate after a version bump with `VV_UPDATE_VENDOR_LOCKS=1` (runs `npm install
+   --package-lock-only --ignore-scripts` against registry.npmjs.org) and review the diff. Two locked packages have
+   install scripts that `--ignore-scripts` skips, neither needed here: `yarn`'s `preinstall` (removes a Corepack
+   shim on a global install) and `esbuild`'s `postinstall` (checks the platform binary, which npm installs as an
+   optional dependency anyway; `transformSync` works without it). Downloads outside npm are checked against SHA-256
+   digests committed in the scripts and fail closed: `vendor-llhttp.mjs` (undici tarball), `vendor-sqlite.mjs
+   --refresh` (sqlite-wasm tarball), `vendor-pyodide.mjs` (each PyPI wheel's digest in `PYPI_PACKAGES`; each CDN
+   wheel against the `sha256` in `pyodide-lock.json`, which comes from the locked pyodide package). The digests were
+   computed on 2026-11-27 by downloading once; the two tarballs' sha512 matched the registry's `dist.integrity` and
+   the wheels' digests matched PyPI's JSON API.
+3. **Registry mirror, same-origin by default** (`packages/runtime/registry-mirror.js`, `BootOptions.registryMirror`).
    Requests to `https://registry.npmjs.org/` and `https://registry.yarnpkg.com/` go to `/_npm/` on the page's own
    origin, on both paths out of the VM: the Fetcher Worker (`http`/`https`, which npm uses) and the guest's global
    `fetch` (which Next.js uses for its wasm SWC). Guest tools keep the stock registry URL, so lockfiles and `.npmrc`
    stay portable. `registryMirror: "<url or path>"` points elsewhere; `false` restores upstream behaviour (direct).
    Probe: `npm run probe:registry-mirror` (offline, in CI).
-3. **Pinned dependencies.** Direct dependencies of the root, `packages/core`, `packages/react` and `examples/basic`
+4. **Pinned dependencies.** Direct dependencies of the root, `packages/core`, `packages/react` and `examples/basic`
    are exact versions (from the lockfile), `.npmrc` has `save-exact=true`, Vite is 8.3.8 (8.2.0 had four high
    advisories), the unpinned vendor installs are pinned (`tsgo-wasm@7.0.2`, `pyodide@314.0.8`), and CI installs Rust
    1.98.1 instead of `stable`. Rust crates were already pinned by each `Cargo.lock`.
-4. **`NOTICE`** for everything the runtime bundle redistributes, including the modification statement for the
-   patched npm (Artistic-2.0).
-5. **e2e egress test** (`e2e/jwc/`, `scripts/jwc-e2e.mjs`): a cold `npm install` and dev server in Chrome with every
+5. **`NOTICE`** for everything the runtime bundle redistributes, including the modification statement for the
+   patched npm (Artistic-2.0) and the node-gyp files `stubNodeGyp()` replaces in it.
+6. **e2e egress test** (`e2e/jwc/`, `scripts/jwc-e2e.mjs`): a cold `npm install` and dev server in Chrome with every
    outside host refused; fails if the page, a worker or the service worker asks for any host but its own origin.
 
 ### Default external URLs

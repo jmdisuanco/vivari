@@ -27,13 +27,13 @@
 // so vendoring the compiled artifact carries no obligation; provenance is recorded in
 // the manifest beside it regardless.
 
-import { execFileSync } from "node:child_process";
+import { execSync } from "node:child_process";
 import {
   copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync,
   statSync, writeFileSync,
 } from "node:fs";
 import { createHash } from "node:crypto";
-import { npmEnv, scratchTemp } from "./lib/scratch.mjs";
+import { assertSha256, npmEnv, scratchTemp } from "./lib/scratch.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -42,6 +42,9 @@ import { ENGINE_IMPORT_NAMES, ENGINE_MEMORY } from "../packages/runtime/builtins
 // Pinned. Bumping this is a deliberate act: re-run with --refresh, check the validation
 // output below, and commit the new bytes + manifest together.
 const SQLITE_WASM_VERSION = "3.53.0-build1";
+// SHA-256 of sqlite.org-sqlite-wasm-3.53.0-build1.tgz from registry.npmjs.org (its sha512
+// matches the registry's dist.integrity), computed 2026-11-27. Bump it with the version.
+const SQLITE_WASM_TGZ_SHA256 = "fbbd5c542fad22ce1d90df1533025903a00a593f461f4a43b1e43e9897dfad9c";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SRC_DIR = path.join(ROOT, "packages/runtime/vendor/sqlite");
@@ -179,14 +182,11 @@ function refresh() {
   const dir = scratchTemp("vendor-sqlite-");
   try {
     console.log(`fetching @sqlite.org/sqlite-wasm@${SQLITE_WASM_VERSION} …`);
-    execFileSync("npm", ["pack", `@sqlite.org/sqlite-wasm@${SQLITE_WASM_VERSION}`], {
-      cwd: dir,
-      stdio: "inherit",
-      env: npmEnv(),
-    });
+    execSync(`npm pack @sqlite.org/sqlite-wasm@${SQLITE_WASM_VERSION}`, { cwd: dir, stdio: "inherit", env: npmEnv() });
     const tgz = readdirSync(dir).find((f) => f.endsWith(".tgz"));
     if (!tgz) throw new Error("npm pack produced no tarball");
-    execFileSync("tar", ["-xzf", tgz], { cwd: dir });
+    assertSha256(readFileSync(path.join(dir, tgz)), SQLITE_WASM_TGZ_SHA256, tgz);
+    execSync(`tar -xzf ${tgz}`, { cwd: dir });
     // The package restructured between 3.41 (sqlite-wasm/jswasm/) and 3.53 (dist/), so
     // try both rather than pinning a layout that a bump will silently break.
     const candidates = [

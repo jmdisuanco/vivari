@@ -73,7 +73,7 @@ if (fs.existsSync(OUT_FILE) && !force) {
 if (!fs.existsSync(path.join(VENDOR_NPM, "bin", "npm-cli.js")) || force) {
   log(`installing npm@${NPM_VERSION} into ${VENDOR_DIR} …`);
   try {
-    npmInstallInto(VENDOR_DIR, [`npm@${NPM_VERSION}`]);
+    npmInstallInto(VENDOR_DIR, "npm", [`npm@${NPM_VERSION}`]);
   } catch (e) {
     log(`FAILED to vendor npm (need network + host npm): ${(e && e.message) || e}`);
     process.exit(1);

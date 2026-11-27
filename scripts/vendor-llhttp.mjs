@@ -12,13 +12,16 @@
 // Provenance / license: llhttp is MIT (Fedor Indutny & collaborators); undici is
 // MIT (Node.js contributors). We ship only the compiled byte payload as base64.
 
-import { execFileSync } from "node:child_process";
+import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync, rmSync, readdirSync } from "node:fs";
-import { npmEnv, scratchTemp } from "./lib/scratch.mjs";
+import { assertSha256, npmEnv, scratchTemp } from "./lib/scratch.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const UNDICI_VERSION = "8.7.0";
+// SHA-256 of undici-8.7.0.tgz as served by registry.npmjs.org (its sha512 matches the
+// registry's dist.integrity), computed 2026-11-27. Bump it with UNDICI_VERSION.
+const UNDICI_TGZ_SHA256 = "91f03141019b9d970daa6a09d14884eb591349f7996e0257715faf967e145027";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(
   HERE,
@@ -42,9 +45,10 @@ function readFromArg() {
 function downloadUndici() {
   const dir = scratchTemp("vendor-llhttp-");
   try {
-    execFileSync("npm", ["pack", `undici@${UNDICI_VERSION}`], { cwd: dir, stdio: "inherit", env: npmEnv() });
+    execSync(`npm pack undici@${UNDICI_VERSION}`, { cwd: dir, stdio: "inherit", env: npmEnv() });
     const tgz = readdirSync(dir).find((f) => f.endsWith(".tgz"));
-    execFileSync("tar", ["-xzf", tgz], { cwd: dir });
+    assertSha256(readFileSync(path.join(dir, tgz)), UNDICI_TGZ_SHA256, tgz);
+    execSync(`tar -xzf ${tgz}`, { cwd: dir });
     return {
       file: path.join(dir, "package", "lib", "llhttp", "llhttp-wasm.js"),
       version: `undici@${UNDICI_VERSION}`,
