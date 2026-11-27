@@ -111,3 +111,26 @@ The runtime origin is `vm-<id>.<runtime domain>` (`jmart.digital` today), never 
 5. `npm audit` and the e2e run on every sync; a high advisory in shipped code blocks the pin move.
 6. If upstream stalls or relicenses, stay on the last MIT commit (released MIT code stays MIT) and maintain only
    the Node path.
+
+## JWC1 measurements (2026-11-27)
+
+Windows 11, Ryzen 7 PRO 6850H, Chrome (headless, Playwright 1.65.1), default boot options, the jmart-code nginx
+mirror (`infra/npm-mirror`, production config) in a local container, every other host refused by the proxy.
+`scripts/jwc-e2e.mjs`; spike numbers (WASM_CONTAINER_SPIKE.md §0, the spike's Node mirror) for comparison.
+
+| | Vite 8 + React 19 (plain) | Next.js 16 (`--webpack` + wasm SWC) |
+|---|---|---|
+| `npm install`, cold mirror | 33.0 / 37.7 s (spike 35 s) | 41.4 s (spike 36 s) |
+| `npm install`, warm mirror, with CSP | 18.6 s (spike 20 s) | 32.0 s |
+| dev server ready / app visible after `npm run dev` | 1.8 / 2.7 s (spike 2.1 / 2.9 s) | 14.6 / 35.3 s (spike 14.5 / 36.0 s) |
+| cold total, page open to app visible | 38.8 / 44.2 s (spike 25–41 s) | 79.9 s (spike 76 s) |
+| edit to visible change | 0.09 s | 0.83 s |
+| browser memory after preview (sum of working sets) | 1.33 GB | 2.17 GB |
+| mirror requests / bytes | 177 / 39 MB | 85 / 78 MB |
+| hosts the page, its workers or its service worker asked for | own origin only | own origin only |
+
+The positive control (a guest `fetch('https://example.com/')`) was seen by both detectors without CSP and never
+reached the network with `connect-src 'self'`. Chrome's own background requests (www.google.com, gstatic,
+clients2.google.com) come from the browser process, not the page, and are reported apart. Plain Next.js
+(`next dev`) now downloads its wasm SWC through the mirror, then stops: Turbopack has no Wasm build, so projects
+still need `next dev --webpack` (the project normaliser's job).
