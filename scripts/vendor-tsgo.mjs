@@ -25,7 +25,7 @@
 //
 // Usage: node scripts/vendor-tsgo.mjs [--force]
 
-import { execSync } from "node:child_process";
+import { npmInstallInto, scratchPath } from "./lib/scratch.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
@@ -33,7 +33,9 @@ import { fileURLToPath } from "node:url";
 import { readPackVersion } from "./lib/pack-version.mjs";
 
 const ROOT = path.resolve(fileURLToPath(new URL("../", import.meta.url)));
-const VENDOR_DIR = process.env.VV_VENDOR_TSGO_DIR || "/tmp/vv-vendor-tsgo";
+// Pinned (it was `npm install tsgo-wasm`, i.e. whatever was latest on the day).
+const TSGO_VERSION = "7.0.2";
+const VENDOR_DIR = process.env.VV_VENDOR_TSGO_DIR || scratchPath("vendor-tsgo");
 const VENDOR_TSGO = path.join(VENDOR_DIR, "node_modules", "tsgo-wasm");
 const OUT_DIR = path.join(ROOT, "packages", "studio", "public", "vendor");
 // Gzip-compressed but deliberately NOT named `.gz` (static servers would set
@@ -47,7 +49,7 @@ function log(msg) {
 }
 
 if (fs.existsSync(OUT_FILE) && !force) {
-  // tsgo-wasm is vendored without a version pin, so the pack's stamp is compared
+  // The pack's stamp is compared (tsgo-wasm was vendored unpinned before TSGO_VERSION)
   // against the tree already on disk when there is one: a refreshed tsgo-wasm must
   // not leave the previous pack in place. An unreadable header is stale; with no
   // vendored tree to compare against, the readable stamp is all there is.
@@ -69,13 +71,8 @@ if (fs.existsSync(OUT_FILE) && !force) {
 // 1) Vendor tsgo-wasm into a scratch dir (host npm/network needed once).
 if (!fs.existsSync(path.join(VENDOR_TSGO, "tsgo.wasm")) || force) {
   log(`installing tsgo-wasm into ${VENDOR_DIR} …`);
-  fs.rmSync(VENDOR_DIR, { recursive: true, force: true });
-  fs.mkdirSync(VENDOR_DIR, { recursive: true });
   try {
-    execSync(`npm install tsgo-wasm --no-save --no-audit --no-fund --loglevel=error`, {
-      cwd: VENDOR_DIR,
-      stdio: ["ignore", "ignore", "inherit"],
-    });
+    npmInstallInto(VENDOR_DIR, [`tsgo-wasm@${TSGO_VERSION}`]);
   } catch (e) {
     log(`FAILED to vendor tsgo-wasm (need network + host npm): ${(e && e.message) || e}`);
     process.exit(1);

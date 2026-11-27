@@ -19,7 +19,7 @@
 //
 // Usage: node scripts/vendor-npm.mjs [--force]
 
-import { execSync } from "node:child_process";
+import { npmInstallInto, scratchPath } from "./lib/scratch.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
@@ -33,7 +33,7 @@ import { readPackVersion } from "./lib/pack-version.mjs";
 
 const NPM_VERSION = "10.9.2"; // keep in sync with scripts/spike-npm.mjs
 const ROOT = path.resolve(fileURLToPath(new URL("../", import.meta.url)));
-const VENDOR_DIR = process.env.VV_VENDOR_DIR || "/tmp/vv-vendor";
+const VENDOR_DIR = process.env.VV_VENDOR_DIR || scratchPath("vendor-npm");
 const VENDOR_NPM = path.join(VENDOR_DIR, "node_modules", "npm");
 const OUT_DIR = path.join(ROOT, "packages", "studio", "public", "vendor");
 // NOTE: the payload is gzip-compressed, but the file is deliberately NOT named
@@ -72,13 +72,8 @@ if (fs.existsSync(OUT_FILE) && !force) {
 // 1) Vendor a pinned npm into a scratch dir (host npm/network needed once).
 if (!fs.existsSync(path.join(VENDOR_NPM, "bin", "npm-cli.js")) || force) {
   log(`installing npm@${NPM_VERSION} into ${VENDOR_DIR} …`);
-  fs.rmSync(VENDOR_DIR, { recursive: true, force: true });
-  fs.mkdirSync(VENDOR_DIR, { recursive: true });
   try {
-    execSync(`npm install npm@${NPM_VERSION} --no-save --no-audit --no-fund --loglevel=error`, {
-      cwd: VENDOR_DIR,
-      stdio: ["ignore", "ignore", "inherit"],
-    });
+    npmInstallInto(VENDOR_DIR, [`npm@${NPM_VERSION}`]);
   } catch (e) {
     log(`FAILED to vendor npm (need network + host npm): ${(e && e.message) || e}`);
     process.exit(1);

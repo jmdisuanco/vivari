@@ -29,11 +29,11 @@
 
 import { execFileSync } from "node:child_process";
 import {
-  copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync,
+  copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync,
   statSync, writeFileSync,
 } from "node:fs";
 import { createHash } from "node:crypto";
-import { tmpdir } from "node:os";
+import { scratchTemp } from "./lib/scratch.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -176,7 +176,7 @@ function validate(bytes) {
 }
 
 function refresh() {
-  const dir = mkdtempSync(path.join(tmpdir(), "vv-vendor-sqlite-"));
+  const dir = scratchTemp("vendor-sqlite-");
   try {
     console.log(`fetching @sqlite.org/sqlite-wasm@${SQLITE_WASM_VERSION} …`);
     execFileSync("npm", ["pack", `@sqlite.org/sqlite-wasm@${SQLITE_WASM_VERSION}`], {

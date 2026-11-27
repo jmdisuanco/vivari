@@ -37,3 +37,6 @@ node_modules
 
 # OS
 .DS_Store
+# Scratch space for build/vendor scripts (scripts/lib/scratch.mjs)
+/.vv-scratch
+/dist-jwc-e2e

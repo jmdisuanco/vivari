@@ -45,7 +45,6 @@
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
@@ -53,6 +52,7 @@ import { fileURLToPath } from "node:url";
 import { createDepCache, hashDepKey, readSnapshotContainer, writeSnapshotContainer } from "../packages/kernel-host/dep-cache.js";
 import { hostAccess, memoryStorage } from "./lib/host-vfs-access.mjs";
 import { loadShippedTemplates } from "./lib/shipped-templates.mjs";
+import { scratchPath, scratchTemp } from "./lib/scratch.mjs";
 import { TARGET_FLAGS, targetPlatformEnv } from "./lib/npm-target-platform.mjs";
 import {
   REGISTRY,
@@ -67,7 +67,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const LOCK_DIR = path.join(ROOT, "packages/studio/public/vendor/locks");
 const OUT_DIR = path.join(ROOT, "packages/studio/public/vendor/depcache");
 const INDEX = path.join(OUT_DIR, "index.json");
-const CACHE = path.join(os.tmpdir(), "vv-gen-depcache-cache");
+const CACHE = scratchPath("gen-depcache-cache");
 
 // The templates whose snapshot is worth its hosting bytes. See the header before
 // adding one, and record the measured size in the comment beside it.
@@ -248,7 +248,7 @@ async function buildOne(template) {
     throw new Error(`the template's package.json declares ${ownInstallHooks.join("/")}; a restore skips npm`);
   }
 
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `vv-depcache-${id}-`));
+  const dir = scratchTemp(`depcache-${id}-`);
   try {
     fs.writeFileSync(path.join(dir, "package.json"), packageJson);
     fs.writeFileSync(path.join(dir, "package-lock.json"), lockText);

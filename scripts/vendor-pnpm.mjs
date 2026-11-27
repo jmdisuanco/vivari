@@ -24,7 +24,7 @@
 //
 // Usage: node scripts/vendor-pnpm.mjs [--force]
 
-import { execSync } from "node:child_process";
+import { npmInstallInto, scratchPath } from "./lib/scratch.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
@@ -33,7 +33,7 @@ import { readPackVersion } from "./lib/pack-version.mjs";
 
 const PNPM_VERSION = "11.28.9"; // keep in sync with scripts/spike-pnpm.mjs
 const ROOT = path.resolve(fileURLToPath(new URL("../", import.meta.url)));
-const VENDOR_DIR = process.env.VV_VENDOR_PNPM_DIR || "/tmp/vv-vendor-pnpm";
+const VENDOR_DIR = process.env.VV_VENDOR_PNPM_DIR || scratchPath("vendor-pnpm");
 const VENDOR_PNPM = path.join(VENDOR_DIR, "node_modules", "pnpm");
 const OUT_DIR = path.join(ROOT, "packages", "studio", "public", "vendor");
 // Gzip-compressed but deliberately NOT named `.gz` (static servers would set
@@ -70,13 +70,8 @@ function vendoredVersion() {
 }
 if (!fs.existsSync(path.join(VENDOR_PNPM, "bin", "pnpm.cjs")) || vendoredVersion() !== PNPM_VERSION || force) {
   log(`installing pnpm@${PNPM_VERSION} into ${VENDOR_DIR} …`);
-  fs.rmSync(VENDOR_DIR, { recursive: true, force: true });
-  fs.mkdirSync(VENDOR_DIR, { recursive: true });
   try {
-    execSync(`npm install pnpm@${PNPM_VERSION} --no-save --no-audit --no-fund --loglevel=error`, {
-      cwd: VENDOR_DIR,
-      stdio: ["ignore", "ignore", "inherit"],
-    });
+    npmInstallInto(VENDOR_DIR, [`pnpm@${PNPM_VERSION}`]);
   } catch (e) {
     log(`FAILED to vendor pnpm (need network + host npm): ${(e && e.message) || e}`);
     process.exit(1);

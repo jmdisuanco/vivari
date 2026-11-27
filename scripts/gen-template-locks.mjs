@@ -53,7 +53,6 @@
 
 import { execFile } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -61,6 +60,7 @@ import { promisify } from "node:util";
 const execFileP = promisify(execFile);
 
 import { loadShippedTemplates } from "./lib/shipped-templates.mjs";
+import { scratchPath, scratchTemp } from "./lib/scratch.mjs";
 import { ARBORIST_PEERSET_PRELOAD } from "../packages/kernel-host/node-gyp-stub.js";
 import { TARGET_CPU, TARGET_OS, TARGET_PLATFORM_PRELOAD } from "./lib/npm-target-platform.mjs";
 import { NATIVE_DROPIN_ALIASES, NATIVE_WASM_ALIASES } from "../packages/runtime/toolchain-shims.js";
@@ -77,7 +77,7 @@ const OUT_DIR = path.join(ROOT, "packages/studio/public/vendor/locks");
 const INDEX = path.join(OUT_DIR, "index.json");
 // One cache for the whole run. The templates overlap heavily (every Vite variant
 // pulls the same rolldown graph), so the second template onwards is mostly warm.
-const CACHE = path.join(os.tmpdir(), "vv-gen-locks-cache");
+const CACHE = scratchPath("gen-locks-cache");
 // The registry the BROWSER will fetch from. No trailing slash — it is compared
 // against `resolved` prefixes as well as passed to npm. See assertPublicRegistry.
 export const REGISTRY = "https://registry.npmjs.org";
@@ -761,8 +761,8 @@ export function aliasOverrides(lockText) {
  * all three for every shipped lock that has an aliased entry.
  */
 async function resolveLock(id, packageJson) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `vv-lock-${id}-`));
-  const preload = path.join(os.tmpdir(), `vv-arborist-preload-${process.pid}-${id}.cjs`);
+  const dir = scratchTemp(`lock-${id}-`);
+  const preload = scratchPath(`arborist-preload-${process.pid}-${id}.cjs`);
   const lock = path.join(dir, "package-lock.json");
   const nodeOptions = `${process.env.NODE_OPTIONS || ""} --require ${JSON.stringify(preload)}`.trim();
   const resolve = () =>

@@ -19,7 +19,7 @@
 // install from that lock). Both broke the same way on the same release.
 
 import fs from "node:fs";
-import os from "node:os";
+import { scratchTemp } from "./scratch.mjs";
 import path from "node:path";
 
 export const TARGET_CPU = "wasm32";
@@ -49,11 +49,11 @@ export const TARGET_FLAGS = [`--cpu=${TARGET_CPU}`, `--os=${TARGET_OS}`];
  * cleanup. `extra` is more preload source to run first (the arborist patch).
  */
 export function targetPlatformEnv(baseEnv = process.env, extra = "") {
-  const file = path.join(os.tmpdir(), `vv-npm-target-${process.pid}-${Math.random().toString(36).slice(2)}.cjs`);
+  const file = path.join(scratchTemp("npm-target-"), "preload.cjs");
   fs.writeFileSync(file, (extra ? extra + "\n" : "") + TARGET_PLATFORM_PRELOAD);
   const nodeOptions = `${baseEnv.NODE_OPTIONS || ""} --require ${JSON.stringify(file)}`.trim();
   return {
     env: { ...baseEnv, NODE_OPTIONS: nodeOptions },
-    cleanup: () => fs.rmSync(file, { force: true }),
+    cleanup: () => fs.rmSync(path.dirname(file), { recursive: true, force: true }),
   };
 }

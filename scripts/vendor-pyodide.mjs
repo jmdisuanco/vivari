@@ -28,13 +28,15 @@
 // Build artifact (gitignored, /packages/studio/public/vendor). Idempotent unless
 // --force. Usage: node scripts/vendor-pyodide.mjs [--force]
 
-import { execSync } from "node:child_process";
+import { npmInstallInto, scratchPath } from "./lib/scratch.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(fileURLToPath(new URL("../", import.meta.url)));
-const SCRATCH = process.env.VV_VENDOR_PYODIDE_DIR || "/tmp/vv-vendor-pyodide";
+// Pinned: an unpinned interpreter changes under a rebuild with nothing in the diff.
+const PYODIDE_VERSION = "314.0.8";
+const SCRATCH = process.env.VV_VENDOR_PYODIDE_DIR || scratchPath("vendor-pyodide");
 const OUT_DIR = path.join(ROOT, "packages", "studio", "public", "vendor", "pyodide");
 
 // The core files npm's `pyodide` package ships (see the package's file listing).
@@ -238,13 +240,8 @@ if (!retry) fs.rmSync(OUT_DIR, { recursive: true, force: true });
 const PKG_DIR = path.join(SCRATCH, "node_modules", "pyodide");
 if (!fs.existsSync(path.join(PKG_DIR, "pyodide.mjs")) || force) {
   log(`installing pyodide into ${SCRATCH} …`);
-  fs.rmSync(SCRATCH, { recursive: true, force: true });
-  fs.mkdirSync(SCRATCH, { recursive: true });
   try {
-    execSync(`npm install pyodide --no-save --no-audit --no-fund --loglevel=error`, {
-      cwd: SCRATCH,
-      stdio: ["ignore", "ignore", "inherit"],
-    });
+    npmInstallInto(SCRATCH, [`pyodide@${PYODIDE_VERSION}`]);
   } catch (e) {
     log(`FAILED to install pyodide (need network + host npm): ${(e && e.message) || e}`);
     process.exit(1);

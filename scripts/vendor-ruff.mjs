@@ -19,13 +19,13 @@
 //
 // Usage: node scripts/vendor-ruff.mjs [--force]
 
-import { execSync } from "node:child_process";
+import { npmInstallInto, scratchPath } from "./lib/scratch.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(fileURLToPath(new URL("../", import.meta.url)));
-const SCRATCH = process.env.VV_VENDOR_RUFF_DIR || "/tmp/vv-vendor-ruff";
+const SCRATCH = process.env.VV_VENDOR_RUFF_DIR || scratchPath("vendor-ruff");
 const PKG = "@astral-sh/ruff-wasm-web";
 // Pinned. An unpinned linter changes its mind about a codebase on a Tuesday,
 // and the person it happens to has no way to connect it to anything they did.
@@ -45,13 +45,8 @@ if (FILES.every((f) => fs.existsSync(path.join(OUT_DIR, f))) && !force) {
 const installed = path.join(SCRATCH, "node_modules", PKG);
 if (!fs.existsSync(path.join(installed, "ruff_wasm_bg.wasm")) || force) {
   log(`installing ${PKG}@${VERSION} into ${SCRATCH} …`);
-  fs.rmSync(SCRATCH, { recursive: true, force: true });
-  fs.mkdirSync(SCRATCH, { recursive: true });
   try {
-    execSync(`npm install ${PKG}@${VERSION} --no-save --no-audit --no-fund --loglevel=error`, {
-      cwd: SCRATCH,
-      stdio: ["ignore", "ignore", "inherit"],
-    });
+    npmInstallInto(SCRATCH, [`${PKG}@${VERSION}`]);
   } catch (e) {
     log(`FAILED to fetch ${PKG} (needs network + host npm): ${(e && e.message) || e}`);
     process.exit(1);
