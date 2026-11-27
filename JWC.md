@@ -12,7 +12,7 @@ fork carries only small patches, each one offered upstream.
 | Forked from | tag `v1.3.5`, commit `1c0de764c94503e9022cc8cfd60126cb66480149` (2026-11-20) |
 | Our branch | `jwc1` (JWC1 patches below); pin consumers to an exact commit, never to the branch |
 
-## Patches on `jwc1`
+## Patches on `jwc1` and `jwc2`
 
 1. **Build scripts stay inside the repo** (`scripts/lib/scratch.mjs`). Every vendor and generator script works under
    `.vv-scratch/` (gitignored; `VV_SCRATCH_DIR` moves it), and every host `npm` it runs (`install`, `ci`, `pack`,
@@ -54,6 +54,13 @@ fork carries only small patches, each one offered upstream.
    patched npm (Artistic-2.0) and the node-gyp files `stubNodeGyp()` replaces in it.
 6. **e2e egress test** (`e2e/jwc/`, `scripts/jwc-e2e.mjs`): a cold `npm install` and dev server in Chrome with every
    outside host refused; fails if the page, a worker or the service worker asks for any host but its own origin.
+
+7. **Site preview headers** (`jwc2`, `packages/studio/public/sw.js`). A document the Service Worker serves gets no
+   HTTP headers from the host, so the host's CSP would not reach the dev server's pages. When the origin serves
+   `/__vv-preview-headers.json` (e.g. `{"Content-Security-Policy": "..."}`), the worker fetches it itself (no
+   credentials, no redirects) and adds those headers to every preview response; a CSP is appended as a second
+   policy, so the app's own and the host's are both enforced. 404 = none (upstream behaviour); any other failure
+   serves 503 instead of an unpoliced page. Read once per worker lifetime. jmart-code's vm-host serves it.
 
 ### Default external URLs
 
