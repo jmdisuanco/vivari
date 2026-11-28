@@ -5,5 +5,6 @@ const rows = figlet.textSync('JMart', { font: 'Big' }).split('\n').filter((l) =>
 const paint = [(s) => c.br(s), (s) => c.by(s), (s) => c.bg(s), (s) => c.bc(s), (s) => c.bb(s), (s) => c.bm(s)];
 const art = rows.map((r, i) => paint[i % paint.length](r).end()).join('\n');
 const sub = c.bw('Code terminal').end() + c.bk(' · ').end() + 'Node 24 · try ' + c.bc('ls').end() + ', ' + c.bc('node -v').end() + ' or ' + c.bc('npm run dev').end();
-const banner = (art + '\n' + sub + '\n').replace(/\n/g, '\r\n');
+const site = c.bk('Docs and projects: ').end() + c.bb('https://code.jmart.dev').end();
+const banner = (art + '\n' + sub + '\n' + site + '\n').replace(/\n/g, '\r\n');
 process.stdout.write(process.argv[2] === 'show' ? banner : JSON.stringify(banner));
