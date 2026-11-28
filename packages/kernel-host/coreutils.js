@@ -1144,8 +1144,8 @@ function runInteractive() {
 
   process.stdin.setRawMode && process.stdin.setRawMode(true);
   process.stdin.resume();
-  // Banner: figlet 'JMart' (ANSI Shadow) coloured with 8colors, rendered ahead of time (the VM installs nothing for it).
-  process.stdout.write("\\u001b[91m     ██╗███╗   ███╗ █████╗ ██████╗ ████████╗\\u001b[0m\\r\\n\\u001b[93m     ██║████╗ ████║██╔══██╗██╔══██╗╚══██╔══╝\\u001b[0m\\r\\n\\u001b[92m     ██║██╔████╔██║███████║██████╔╝   ██║   \\u001b[0m\\r\\n\\u001b[96m██   ██║██║╚██╔╝██║██╔══██║██╔══██╗   ██║   \\u001b[0m\\r\\n\\u001b[94m╚█████╔╝██║ ╚═╝ ██║██║  ██║██║  ██║   ██║   \\u001b[0m\\r\\n\\u001b[95m ╚════╝ ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   \\u001b[0m\\r\\n\\u001b[97mCode terminal\\u001b[0m\\u001b[90m · \\u001b[0mNode 24 · try \\u001b[96mls\\u001b[0m, \\u001b[96mnode -v\\u001b[0m or \\u001b[96mnpm run dev\\u001b[0m\\r\\n");
+  // Banner: figlet 'JMart' (Big) coloured with 8colors, rendered ahead of time (banner.gen.js; the VM installs nothing for it).
+  process.stdout.write("\\u001b[91m       _ __  __            _   \\u001b[0m\\r\\n\\u001b[93m      | |  \\\\/  |          | |  \\u001b[0m\\r\\n\\u001b[92m      | | \\\\  / | __ _ _ __| |_ \\u001b[0m\\r\\n\\u001b[96m  _   | | |\\\\/| |/ _\` | '__| __|\\u001b[0m\\r\\n\\u001b[94m | |__| | |  | | (_| | |  | |_ \\u001b[0m\\r\\n\\u001b[95m  \\\\____/|_|  |_|\\\\__,_|_|   \\\\__|\\u001b[0m\\r\\n\\u001b[97mCode terminal\\u001b[0m\\u001b[90m · \\u001b[0mNode 24 · try \\u001b[96mls\\u001b[0m, \\u001b[96mnode -v\\u001b[0m or \\u001b[96mnpm run dev\\u001b[0m\\r\\n");
   prompt();
 
   // Auto-run a command at startup (VV_RUN), exactly as if the user had typed it.
