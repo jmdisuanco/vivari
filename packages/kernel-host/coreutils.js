@@ -1144,7 +1144,7 @@ function runInteractive() {
 
   process.stdin.setRawMode && process.stdin.setRawMode(true);
   process.stdin.resume();
-  process.stdout.write('Vivari shell — type commands, Enter to run.\\n');
+  process.stdout.write('JMart Code terminal · Node 24 · try ls, node -v or npm run dev\\n');
   prompt();
 
   // Auto-run a command at startup (VV_RUN), exactly as if the user had typed it.
