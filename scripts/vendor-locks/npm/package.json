@@ -1,0 +1,7 @@
+{
+  "name": "vv-vendor-npm",
+  "private": true,
+  "dependencies": {
+    "npm": "10.9.2"
+  }
+}

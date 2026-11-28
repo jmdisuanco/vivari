@@ -1500,12 +1500,56 @@ function previewConnectingHtml(port) {
 // is cross-origin to it regardless, and keeps the COEP: credentialless it is served with.
 async function handlePreview(event, port, path, keepPrefix) {
   const served = {};
-  const res = await servePreview(event, port, path, keepPrefix, served);
+  let site;
+  try {
+    site = await loadSitePreviewHeaders();
+  } catch {
+    // The host publishes a policy but it could not be read: serve nothing rather than an unpoliced page.
+    return new Response("Preview policy unavailable, reload to retry.", { status: 503, headers: { "content-type": "text/plain" } });
+  }
+  let res = await servePreview(event, port, path, keepPrefix, served);
+  if (site) res = withSiteHeaders(res, site);
   if (event.request.mode === "navigate" && !served.cross) {
     const policy = await loadIsolationPolicy();
     if (policy) res.headers.set("Document-Isolation-Policy", policy);
   }
   return res;
+}
+
+// Site preview headers (jmwebcontainer): a host that serves /__vv-preview-headers.json on this
+// origin, e.g. {"Content-Security-Policy": "..."}, gets those headers on EVERY preview response,
+// on top of the app's own (a CSP is added as a second policy, so both are enforced). The worker
+// fetches the file itself, so neither the page nor guest code can choose or weaken the policy.
+// A 404 means the host has none (upstream behaviour); any other failure fails closed (503 above).
+// Read once per worker lifetime: a changed policy applies when the worker next starts.
+const SITE_HEADERS_URL = "/__vv-preview-headers.json";
+let sitePreviewHeaders = null; // Promise<Record<string, string> | null>
+function loadSitePreviewHeaders() {
+  if (!sitePreviewHeaders) {
+    sitePreviewHeaders = (async () => {
+      const r = await fetch(new URL(SITE_HEADERS_URL, self.registration.scope), { cache: "no-store", credentials: "omit", redirect: "error" });
+      if (r.status === 404) return null;
+      if (!r.ok) throw new Error("site preview headers: HTTP " + r.status);
+      const json = await r.json();
+      const out = {};
+      for (const [k, v] of Object.entries(json || {})) {
+        if (typeof v === "string" && /^[A-Za-z][A-Za-z0-9-]*$/.test(k)) out[k] = v;
+      }
+      return out;
+    })();
+    sitePreviewHeaders.catch(() => (sitePreviewHeaders = null)); // retry on the next request
+  }
+  return sitePreviewHeaders;
+}
+
+function withSiteHeaders(res, site) {
+  if (res.type !== "default" || res.status < 200) return res; // nothing a document renders
+  const headers = new Headers(res.headers);
+  for (const [k, v] of Object.entries(site)) {
+    const own = k.toLowerCase() === "content-security-policy" && headers.get(k);
+    headers.set(k, own ? own + ", " + v : v);
+  }
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
 }
 
 async function servePreview(event, port, route, explicitKeepPrefix, served = {}) {

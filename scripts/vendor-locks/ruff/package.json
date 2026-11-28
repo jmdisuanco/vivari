@@ -1,0 +1,7 @@
+{
+  "name": "vv-vendor-ruff",
+  "private": true,
+  "dependencies": {
+    "@astral-sh/ruff-wasm-web": "0.16.1"
+  }
+}

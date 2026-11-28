@@ -24,7 +24,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { matchesFilter } from "./lib/spike-filter.mjs";
-import { npmInstallInto, scratchPath } from "./lib/scratch.mjs";
+import { npmEnv, npmInstallInto, scratchPath } from "./lib/scratch.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const VENDOR_DIR = scratchPath("vendor-npm"); // the same tree scripts/vendor-npm.mjs packs
@@ -32,8 +32,8 @@ const VENDOR_NPM = path.join(VENDOR_DIR, "node_modules/npm");
 
 // Host provisioning some spikes need before they can run at all. Two shapes:
 //
-//   { install: [<pkg@ver>...], dir, arg, probe }
-//       `npm install` into a throwaway scratch dir. `arg` (relative to `dir`) is
+//   { lock, install: [<pkg@exact-ver>...], dir, arg, probe }
+//       `npm ci` from scripts/vendor-locks/<lock>/ into a throwaway scratch dir. `arg` (relative to `dir`) is
 //       the package root handed to the spike as argv[2]; `probe` (relative to
 //       that root) is the idempotency check. Used by the spikes that load a real
 //       CLI off the host disk — yarn/pnpm/corepack/tsgo/ws-demo.
@@ -62,12 +62,12 @@ const VENDOR_NPM = path.join(VENDOR_DIR, "node_modules/npm");
 // Keep the pins in sync with the spike that asserts on them and with the matching
 // scripts/vendor-*.mjs (each of those already carries the same note).
 const VENDORS = {
-  yarn: { install: ["yarn@1.22.22"], dir: scratchPath("vendor-yarn"), arg: "node_modules/yarn", probe: "bin/yarn.js" },
+  yarn: { lock: "yarn", install: ["yarn@1.22.22"], dir: scratchPath("vendor-yarn"), arg: "node_modules/yarn", probe: "bin/yarn.js" },
   // Probe pnpm 11's bundle, not bin/pnpm.cjs, so a dir left by the 9.x pin is re-provisioned.
-  pnpm: { install: ["pnpm@11.28.9"], dir: scratchPath("vendor-pnpm"), arg: "node_modules/pnpm", probe: "dist/pnpm.mjs" },
-  corepack: { install: ["corepack@0.35.0"], dir: scratchPath("vendor-corepack"), arg: "node_modules/corepack", probe: "dist/corepack.js" },
-  tsgo: { install: ["tsgo-wasm@7.0.2"], dir: scratchPath("vendor-tsgo"), arg: "node_modules/tsgo-wasm", probe: "tsgo.wasm" },
-  wsDemo: { install: ["express@^4.21.0", "ws@^8.18.0"], dir: scratchPath("vendor-wsdemo"), arg: ".", probe: "node_modules/ws/package.json" },
+  pnpm: { lock: "pnpm", install: ["pnpm@11.28.9"], dir: scratchPath("vendor-pnpm"), arg: "node_modules/pnpm", probe: "dist/pnpm.mjs" },
+  corepack: { lock: "corepack", install: ["corepack@0.35.0"], dir: scratchPath("vendor-corepack"), arg: "node_modules/corepack", probe: "dist/corepack.js" },
+  tsgo: { lock: "tsgo", install: ["tsgo-wasm@7.0.2"], dir: scratchPath("vendor-tsgo"), arg: "node_modules/tsgo-wasm", probe: "tsgo.wasm" },
+  wsDemo: { lock: "wsdemo", install: ["express@4.22.3", "ws@8.23.0"], dir: scratchPath("vendor-wsdemo"), arg: ".", probe: "node_modules/ws/package.json" },
   // The studio's view layer has no test dependency of its own and the repo has no
   // test runner, so the one spike that renders a React component brings its own:
   // React (pinned to the studio's own major), a DOM, and the bundler that turns
@@ -82,13 +82,14 @@ const VENDORS = {
   // and did: the view spike was fully green while the shipped notebook did not
   // repaint at all. Keep the plugin in step with packages/studio/package.json.
   nbView: {
+    lock: "nbview",
     install: [
-      "react@^19.2.7",
-      "react-dom@^19.2.7",
-      "jsdom@^28.0.0",
-      "esbuild@^0.25.0",
-      "@babel/core@^8.0.1",
-      "babel-plugin-react-compiler@^1.0.0",
+      "react@19.3.1",
+      "react-dom@19.3.1",
+      "jsdom@28.1.0",
+      "esbuild@0.25.12",
+      "@babel/core@8.1.3",
+      "babel-plugin-react-compiler@1.0.0",
     ],
     dir: scratchPath("vendor-nbview"),
     arg: ".",
@@ -667,7 +668,7 @@ if (selected.length === 0) {
 async function ensureVendoredNpm() {
   if (fs.existsSync(path.join(VENDOR_NPM, "bin/npm-cli.js"))) return true;
   console.log("\n== provisioning vendored npm at " + VENDOR_DIR + " ==");
-  return installed(VENDOR_DIR, ["npm@10.9.2"]) && fs.existsSync(path.join(VENDOR_NPM, "bin/npm-cli.js"));
+  return installed("npm", VENDOR_DIR, ["npm@10.9.2"]) && fs.existsSync(path.join(VENDOR_NPM, "bin/npm-cli.js"));
 }
 
 /** Absolute path a `vendor` spec produces, and which the spike is handed as argv[2]. */
@@ -687,12 +688,12 @@ async function ensureVendor(v) {
     return r === 0 && fs.existsSync(probe);
   }
   console.log(`\n== provisioning ${v.install.join(" ")} at ${v.dir} ==`);
-  return installed(v.dir, v.install) && fs.existsSync(probe);
+  return installed(v.lock, v.dir, v.install) && fs.existsSync(probe);
 }
 
-function installed(dir, specs) {
+function installed(lock, dir, specs) {
   try {
-    npmInstallInto(dir, specs, "inherit");
+    npmInstallInto(dir, lock, specs, "inherit");
     return true;
   } catch {
     return false;
@@ -701,7 +702,7 @@ function installed(dir, specs) {
 
 function spawnInherit(cmd, argv, cwd) {
   return new Promise((resolve) => {
-    const c = spawn(cmd, argv, { cwd, stdio: "inherit" });
+    const c = spawn(cmd, argv, { cwd, stdio: "inherit", env: npmEnv() });
     c.on("close", (code) => resolve(code | 0));
   });
 }

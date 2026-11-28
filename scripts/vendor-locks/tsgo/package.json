@@ -1,0 +1,7 @@
+{
+  "name": "vv-vendor-tsgo",
+  "private": true,
+  "dependencies": {
+    "tsgo-wasm": "7.0.2"
+  }
+}

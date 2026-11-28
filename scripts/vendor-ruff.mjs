@@ -46,7 +46,7 @@ const installed = path.join(SCRATCH, "node_modules", PKG);
 if (!fs.existsSync(path.join(installed, "ruff_wasm_bg.wasm")) || force) {
   log(`installing ${PKG}@${VERSION} into ${SCRATCH} …`);
   try {
-    npmInstallInto(SCRATCH, [`${PKG}@${VERSION}`]);
+    npmInstallInto(SCRATCH, "ruff", [`${PKG}@${VERSION}`]);
   } catch (e) {
     log(`FAILED to fetch ${PKG} (needs network + host npm): ${(e && e.message) || e}`);
     process.exit(1);

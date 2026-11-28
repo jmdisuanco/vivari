@@ -71,7 +71,7 @@ function vendoredVersion() {
 if (!fs.existsSync(path.join(VENDOR_PNPM, "bin", "pnpm.cjs")) || vendoredVersion() !== PNPM_VERSION || force) {
   log(`installing pnpm@${PNPM_VERSION} into ${VENDOR_DIR} …`);
   try {
-    npmInstallInto(VENDOR_DIR, [`pnpm@${PNPM_VERSION}`]);
+    npmInstallInto(VENDOR_DIR, "pnpm", [`pnpm@${PNPM_VERSION}`]);
   } catch (e) {
     log(`FAILED to vendor pnpm (need network + host npm): ${(e && e.message) || e}`);
     process.exit(1);

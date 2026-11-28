@@ -59,7 +59,7 @@ if (fs.existsSync(OUT_FILE) && !force) {
 if (!fs.existsSync(path.join(VENDOR_YARN, "bin", "yarn.js")) || force) {
   log(`installing yarn@${YARN_VERSION} into ${VENDOR_DIR} …`);
   try {
-    npmInstallInto(VENDOR_DIR, [`yarn@${YARN_VERSION}`]);
+    npmInstallInto(VENDOR_DIR, "yarn", [`yarn@${YARN_VERSION}`]);
   } catch (e) {
     log(`FAILED to vendor yarn (need network + host npm): ${(e && e.message) || e}`);
     process.exit(1);

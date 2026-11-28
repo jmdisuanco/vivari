@@ -6,7 +6,10 @@
 #
 # It provisions the Rust toolchain + wasm-pack (the studio bundles the VFS/codec/
 # crypto Wasm crates from source), builds each surface, then assembles dist/.
+#
+# CI-only: see scripts/lib/ci-only.sh.
 set -euo pipefail
+. "$(dirname "$0")/lib/ci-only.sh"
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"

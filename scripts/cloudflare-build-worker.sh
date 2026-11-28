@@ -14,7 +14,10 @@
 #
 # Point the IDE build at this Worker's domain with:
 #   VITE_PREVIEW_WILDCARD_DOMAIN=vivari.run   (on the MAIN project)
+#
+# CI-only: see scripts/lib/ci-only.sh.
 set -euo pipefail
+. "$(dirname "$0")/lib/ci-only.sh"
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
